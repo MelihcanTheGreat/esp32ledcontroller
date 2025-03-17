@@ -1,0 +1,163 @@
+#include <WiFi.h>
+
+// WiFi credentials
+const char* ssid = "YOUR_WIFI_SSID";          // WiFi name
+const char* password = "YOUR_WIFI_PASSWORD";    // WiFi password
+const IPAddress ip(192, xxx, xxx, xx); // ESP32 static IP address
+const IPAddress gateway(192, 168, xxx, xxx); // You can find by writing "ipconfig" to CMD
+const IPAddress subnet(255, 255, 255, 0);
+
+// LED and relay pins
+const int LED1_PIN = 5;
+const int LED2_PIN = 4;
+const int LED3_PIN = 12;
+const int LED4_PIN = 15;
+const int RELAY_PIN = 13;
+
+WiFiServer server(80);  // Server on port 80
+
+void setup() {
+  Serial.begin(115200);
+
+  // Set LED and relay pins as outputs
+  pinMode(LED1_PIN, OUTPUT);
+  pinMode(LED2_PIN, OUTPUT);
+  pinMode(LED3_PIN, OUTPUT);
+  pinMode(LED4_PIN, OUTPUT);
+  pinMode(RELAY_PIN, OUTPUT);
+
+  // Turn off all LEDs and relay initially
+  digitalWrite(LED1_PIN, LOW);
+  digitalWrite(LED2_PIN, LOW);
+  digitalWrite(LED3_PIN, LOW);
+  digitalWrite(LED4_PIN, LOW);
+  digitalWrite(RELAY_PIN, LOW);
+
+  // Connect to WiFi
+  Serial.println("Setting static IP...");
+  if (!WiFi.config(ip, gateway, subnet)) {
+    Serial.println("Static IP configuration failed");
+  }
+
+  Serial.print("Connecting to WiFi network: ");
+  Serial.println(ssid);
+
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.println("WiFi connected");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  server.begin();
+  Serial.println("Server started");
+}
+
+void loop() {
+  WiFiClient client = server.available();
+
+  if (client) {
+    Serial.println("New client connected");
+    String currentLine = "";
+
+    while (client.connected()) {
+      if (client.available()) {
+        char c = client.read();
+        Serial.write(c);
+
+        if (c == '\n') {
+          if (currentLine.length() == 0) {
+            // HTTP header
+            client.println("HTTP/1.1 200 OK");
+            client.println("Content-type:text/html");
+            client.println("Connection: close");
+            client.println();
+
+            // Homepage
+            client.println("<!DOCTYPE html><html>");
+            client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
+            client.println("<style>body { font-family: Arial; }");
+            client.println(".button { background-color: #4CAF50; border: none; color: white; padding: 16px 40px;");
+            client.println("text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}");
+            client.println(".button2 {background-color: #555555;}</style></head>");
+            client.println("<body><h1>ESP32 LED and Relay Control</h1>");
+
+            // LED1 buttons
+            client.println("<p>LED1 - Status: " + String(digitalRead(LED1_PIN) ? "ON" : "OFF") + "</p>");
+            client.println("<p><a href=\"/LED1/on\"><button class=\"button\">ON</button></a>");
+            client.println("<a href=\"/LED1/off\"><button class=\"button button2\">OFF</button></a></p>");
+
+            // LED2 buttons
+            client.println("<p>LED2 - Status: " + String(digitalRead(LED2_PIN) ? "ON" : "OFF") + "</p>");
+            client.println("<p><a href=\"/LED2/on\"><button class=\"button\">ON</button></a>");
+            client.println("<a href=\"/LED2/off\"><button class=\"button button2\">OFF</button></a></p>");
+
+            // LED3 buttons
+            client.println("<p>LED3 - Status: " + String(digitalRead(LED3_PIN) ? "ON" : "OFF") + "</p>");
+            client.println("<p><a href=\"/LED3/on\"><button class=\"button\">ON</button></a>");
+            client.println("<a href=\"/LED3/off\"><button class=\"button button2\">OFF</button></a></p>");
+
+            // LED4 buttons
+            client.println("<p>LED4 - Status: " + String(digitalRead(LED4_PIN) ? "ON" : "OFF") + "</p>");
+            client.println("<p><a href=\"/LED4/on\"><button class=\"button\">ON</button></a>");
+            client.println("<a href=\"/LED4/off\"><button class=\"button button2\">OFF</button></a></p>");
+
+            // Relay buttons
+            client.println("<p>Relay - Status: " + String(digitalRead(RELAY_PIN) ? "ON" : "OFF") + "</p>");
+            client.println("<p><a href=\"/RELAY/on\"><button class=\"button\">ON</button></a>");
+            client.println("<a href=\"/RELAY/off\"><button class=\"button button2\">OFF</button></a></p>");
+
+            client.println("</body></html>");
+
+            break;
+          } else {
+            currentLine = "";
+          }
+        } else if (c != '\r') {
+          currentLine += c;
+        }
+
+        // LED and relay control
+        if (currentLine.endsWith("GET /LED1/on")) {
+          digitalWrite(LED1_PIN, HIGH);
+          Serial.println("LED1 turned on");
+        } else if (currentLine.endsWith("GET /LED1/off")) {
+          digitalWrite(LED1_PIN, LOW);
+          Serial.println("LED1 turned off");
+        } else if (currentLine.endsWith("GET /LED2/on")) {
+          digitalWrite(LED2_PIN, HIGH);
+          Serial.println("LED2 turned on");
+        } else if (currentLine.endsWith("GET /LED2/off")) {
+          digitalWrite(LED2_PIN, LOW);
+          Serial.println("LED2 turned off");
+        } else if (currentLine.endsWith("GET /LED3/on")) {
+          digitalWrite(LED3_PIN, HIGH);
+          Serial.println("LED3 turned on");
+        } else if (currentLine.endsWith("GET /LED3/off")) {
+          digitalWrite(LED3_PIN, LOW);
+          Serial.println("LED3 turned off");
+        } else if (currentLine.endsWith("GET /LED4/on")) {
+          digitalWrite(LED4_PIN, HIGH);
+          Serial.println("LED4 turned on");
+        } else if (currentLine.endsWith("GET /LED4/off")) {
+          digitalWrite(LED4_PIN, LOW);
+          Serial.println("LED4 turned off");
+        } else if (currentLine.endsWith("GET /RELAY/on")) {
+          digitalWrite(RELAY_PIN, HIGH);
+          Serial.println("Relay turned on");
+        } else if (currentLine.endsWith("GET /RELAY/off")) {
+          digitalWrite(RELAY_PIN, LOW);
+          Serial.println("Relay turned off");
+        }
+      }
+    }
+
+    client.stop();
+    Serial.println("Client disconnected");
+  }
+}
